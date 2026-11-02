@@ -23,8 +23,15 @@ export class CollectionPage extends BasePage {
     return this.productCards.count();
   }
 
-  async clickProductCard(index: number = 0): Promise<void> {
-    await this.productCards.nth(index).locator('a[href*="/products/"]').first().click();
+  /** Clicks a card's title link and returns its href so callers can assert where it went. */
+  async clickProductCard(index: number = 0): Promise<string> {
+    const link = this.productCards.nth(index).locator('a.card-information__text').first();
+    await link.waitFor({ state: 'visible' });
+    const href = (await link.getAttribute('href')) ?? '';
+    // The page's animated promo strips keep the grid from ever settling, so Playwright's
+    // "stable" actionability check never passes. The link is verified visible above.
+    await link.click({ force: true });
+    return href;
   }
 
   async productCardTitle(index: number = 0): Promise<string> {

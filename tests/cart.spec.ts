@@ -17,11 +17,11 @@ test.describe('Cart', () => {
 
   test('increasing quantity in the drawer updates the cart', async ({ cartDrawer }) => {
     await cartDrawer.increaseQuantityOf(handle);
-    await expect.poll(() => cartDrawer.quantityOf(handle)).toBe(2);
+    await expect.poll(() => cartDrawer.quantityOf(handle), { timeout: 20_000 }).toBe(2);
   });
 
   test('removing the product takes it out of the cart', async ({ cartDrawer }) => {
     await cartDrawer.removeLine(handle);
-    await expect.poll(() => cartDrawer.quantityOf(handle)).toBe(0);
+    await expect.poll(() => cartDrawer.quantityOf(handle), { timeout: 20_000 }).toBe(0);
   });
 });

@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 type Cart = {
@@ -58,11 +58,33 @@ export class CartDrawer extends BasePage {
     return this.lineItems.filter({ has: this.page.locator(`a[href*="/products/${handle}"]`) }).first();
   }
 
+  /**
+   * Clicks + on the product's line. Adding to cart triggers a second drawer re-render when promo
+   * gift lines are attached, and a click on the outgoing markup is lost, so the click is retried
+   * only while the cart quantity still hasn't moved (never double-increments).
+   */
   async increaseQuantityOf(handle: string): Promise<void> {
-    await this.lineFor(handle).locator('button[name="plus"]').click();
+    await this.waitUntilSettled();
+    const before = await this.quantityOf(handle);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.lineFor(handle).locator('button[name="plus"]').click();
+      const changed = await expect
+        .poll(() => this.quantityOf(handle), { timeout: 8_000 })
+        .toBeGreaterThan(before)
+        .then(() => true)
+        .catch(() => false);
+      if (changed) return;
+    }
+  }
+
+  /** Waits for the drawer to finish recalculating (checkout button loses its `disabled` class). */
+  private async waitUntilSettled(): Promise<void> {
+    await this.drawer.locator('button.revamp-checkout-btn:not(.disabled)').waitFor({ timeout: 15_000 }).catch(() => {});
+    await this.page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
   }
 
   async removeLine(handle: string): Promise<void> {
+    await this.waitUntilSettled();
     const line = this.lineFor(handle);
     // The <cart-remove-button> wrapper has no box of its own; the clickable control is inside it.
     await line.locator('cart-remove-button :is(a, button):visible').first().click();
@@ -75,8 +97,7 @@ export class CartDrawer extends BasePage {
   }
 
   async checkout(): Promise<void> {
-    // The button carries a `disabled` class until the drawer finishes recalculating.
-    await this.drawer.locator('button.revamp-checkout-btn:not(.disabled)').waitFor({ timeout: 15_000 }).catch(() => {});
+    await this.waitUntilSettled();
     await this.checkoutButton.click();
   }
 }

@@ -11,7 +11,8 @@ test.describe('Collection page (PLP)', () => {
   });
 
   test('clicking a product card navigates to its product detail page', async ({ collectionPage, page }) => {
-    await collectionPage.clickProductCard(0);
+    const href = await collectionPage.clickProductCard(0);
+    await page.waitForURL((url) => url.pathname === href.split('?')[0], { waitUntil: 'commit', timeout: 30_000 });
     await expect(page).toHaveURL(/\/products\//);
   });
 });
