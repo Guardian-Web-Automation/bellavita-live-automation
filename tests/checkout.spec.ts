@@ -21,8 +21,8 @@ test.describe('Checkout', () => {
     await checkoutPage.loginWithOtp(process.env.TEST_PHONE!);
     await checkoutPage.placeCodOrder();
 
-    const orderId = await checkoutPage.waitForThankYou();
-    test.info().annotations.push({ type: 'order', description: orderId });
-    expect(orderId).toMatch(/Order ID/i);
+    const orderNumber = await checkoutPage.waitForThankYou();
+    test.info().annotations.push({ type: 'order', description: orderNumber });
+    expect(orderNumber).toMatch(/\d{5,}/);
   });
 });

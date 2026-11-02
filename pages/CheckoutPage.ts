@@ -11,15 +11,12 @@ export class CheckoutPage extends BasePage {
   private readonly frame = this.page.frameLocator('iframe.gokwik-iframe');
   private readonly phoneInput = this.frame.locator('#phone-input');
   private readonly continueButton = this.frame.locator('#continue-button');
-  // On this storefront the four OTP digit boxes are drawn over a single unlabelled input that
-  // GoKwik auto-focuses, so the OTP screen is detected by its prompt and the digits are typed.
   private readonly otpPrompt = this.frame.getByText('Enter OTP sent to').first();
-  private readonly otpInput = this.frame.locator('input:focus').first();
+  // The four OTP boxes are drawn over one 4-digit input.
+  private readonly otpInput = this.frame.locator('input[autocomplete="one-time-code"]');
   private readonly codOption = this.frame.locator("[data-testid='payment-method-cod']");
   // GoKwik intermittently shows a "Please confirm the order" prepaid-nudge popup before placing COD.
   private readonly confirmButton = this.frame.getByRole('button', { name: 'Confirm', exact: true });
-  private readonly thankYouHeading = this.page.locator('h2', { hasText: 'Thanks for your order' });
-  private readonly orderIdText = this.page.locator('p', { hasText: 'Order ID' });
 
   constructor(page: Page) {
     super(page);
@@ -36,7 +33,13 @@ export class CheckoutPage extends BasePage {
   async loginWithOtp(phone: string): Promise<void> {
     const since = Math.floor(Date.now() / 1000) - 30;
     await this.phoneInput.fill(phone);
-    await this.continueButton.click();
+    // The first click often lands while GoKwik's loading overlay is up; the OTP sheet then opens over
+    // the button, so Playwright keeps retrying a click that already worked. The prompt appearing is
+    // the real success signal.
+    await Promise.race([
+      this.continueButton.click().catch(() => {}),
+      this.otpPrompt.waitFor({ state: 'visible', timeout: 30_000 }),
+    ]);
     await this.otpPrompt.waitFor({ state: 'visible', timeout: 30_000 });
     const otp = await waitForOtp(since);
     await this.otpInput.pressSequentially(otp, { delay: 100 });
@@ -44,14 +47,36 @@ export class CheckoutPage extends BasePage {
 
   /** Selects Cash on Delivery, which places the order; confirms the nudge popup if it appears. */
   async placeCodOrder(): Promise<void> {
-    await this.codOption.click();
+    await this.codOption.click({ timeout: 30_000 });
     await this.confirmButton.click({ timeout: 5_000 }).catch(() => {});
   }
 
-  /** COD top-level-navigates out of the iframe to GoKwik's thank-you page. */
+  /**
+   * COD top-level-navigates out of the iframe to the order confirmation, which is either GoKwik's
+   * `/thank-you` page or Shopify's customer-account order page (`account.<domain>/orders/<token>`,
+   * rendered inside an iframe). Returns the order number, e.g. "BVO379249063921".
+   */
   async waitForThankYou(): Promise<string> {
-    await this.page.waitForURL(/thank-you/, { timeout: 60_000 });
-    await expect(this.thankYouHeading).toBeVisible();
-    return (await this.orderIdText.textContent())?.trim() ?? '';
+    await this.page.waitForURL(/thank-you|\/orders\//, { waitUntil: 'commit', timeout: 60_000 });
+    let orderNumber = '';
+    await expect
+      .poll(
+        async () => {
+          for (const frame of this.page.frames()) {
+            const text = await frame
+              .locator('h1, h2, p')
+              .filter({ hasText: /^\s*Order( ID)?[:\s#]+[A-Z0-9-]{5,}/ })
+              .first()
+              .textContent({ timeout: 1_000 })
+              .catch(() => null);
+            const match = text?.match(/Order(?: ID)?[:\s#]+([A-Z0-9-]{5,})/);
+            if (match) return (orderNumber = match[1]);
+          }
+          return '';
+        },
+        { timeout: 30_000, message: 'order confirmation with an order number' }
+      )
+      .not.toBe('');
+    return orderNumber;
   }
 }
