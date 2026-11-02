@@ -1,0 +1,24 @@
+{
+  "name": "bellavita-live-automation",
+  "version": "1.0.0",
+  "description": "Playwright POM regression suite for the Bellavita live Shopify storefront",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:no-checkout": "playwright test --grep-invert \"COD order\"",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen https://bellavitaorganic.com/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
+    "dotenv": "^17.4.2",
+    "typescript": "^7.0.2"
+  }
+}
