@@ -26,9 +26,15 @@ cp .env.example .env   # then fill in the values below
 ### Cloudflare
 
 bellavitaorganic.com is behind Cloudflare. The suite never tries to solve challenges. If one
-appears, the run stops with a clear error. Runs from office/home machines currently pass.
-GitHub-hosted runners use datacenter IPs and may get challenged. If they do, use a self-hosted
-runner on an office machine (`runs-on: self-hosted`).
+appears, the run stops with a clear error.
+
+### CI runner (must be in India)
+
+GitHub-hosted runners have non-Indian datacenter IPs, and the storefront serves those visitors a
+stripped PDP (no sale price, quantity buttons or cart icon), so PDP/cart/checkout tests fail there.
+CI therefore runs on a self-hosted Windows runner in India with the label `bellavita-india`
+(Settings → Actions → Runners). That machine must be on and the runner service running when a
+workflow is started; otherwise the job waits in the queue.
 
 ### Refresh token expiry
 
@@ -57,7 +63,7 @@ Pages under `runs/<run number>/` and posts a one-line summary with the link to S
 Repository setup:
 - **Secrets:** `TEST_PHONE`, `OTP_SENDER_EMAIL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `GOOGLE_REFRESH_TOKEN`, `SLACK_WEBHOOK_URL` (incoming webhook for #bellavita-daily-scrum)
-- **Variables:** `LIVE_THEME_ID` (currently `131249733678`)
+- **Variables:** `LIVE_THEME_ID` (optional; empty = whatever theme is published)
 - **Pages:** Settings → Pages → deploy from branch `gh-pages`
 
 ## Structure

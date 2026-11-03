@@ -21,7 +21,9 @@ concurrency:
 
 jobs:
   regression:
-    runs-on: ubuntu-latest
+    # Self-hosted runner on an office machine in India. GitHub-hosted runners have non-Indian IPs,
+    # and the storefront serves those visitors a stripped PDP (no sale price, quantity buttons or cart).
+    runs-on: [self-hosted, bellavita-india]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +34,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci && npx playwright install --with-deps chromium
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
 
       - name: Run Playwright suite
         id: run
