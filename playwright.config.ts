@@ -6,6 +6,9 @@ dotenv.config();
 
 export default defineConfig({
   testDir: './tests',
+  // Per-ticket specs (tests/tickets/<TICKET>.spec.ts) run only in a ticket QA run (TICKET=BELL-123),
+  // never as part of regression.
+  testIgnore: process.env.TICKET ? undefined : '**/tickets/**',
   timeout: 90_000,
   expect: {
     timeout: 10_000,

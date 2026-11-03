@@ -15,10 +15,13 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  // Visiting with ?preview_theme_id once sets Shopify's preview session cookie, which the saved
-  // storage state then carries into every test, so all pages render that theme.
+  // Visiting the preview link once sets its session cookie (Shopify's preview_theme_id, VWO's
+  // preview params), which the saved storage state then carries into every test. PREVIEW_URL is a
+  // ticket's full preview link; PREVIEW_THEME_ID is the shorthand for a bare theme preview.
   const themeId = process.env.PREVIEW_THEME_ID;
-  const entryUrl = themeId ? new URL(`/?preview_theme_id=${themeId}`, baseURL).toString() : baseURL;
+  const entryUrl =
+    process.env.PREVIEW_URL ||
+    (themeId ? new URL(`/?preview_theme_id=${themeId}`, baseURL).toString() : baseURL);
   await page.goto(entryUrl, { waitUntil: 'domcontentloaded' });
 
   // A Cloudflare challenge here means BASE_URL points at the protected domain rather than a
